@@ -1,6 +1,6 @@
 import { B2ExtContext } from "../b2";
 import * as vscode from "vscode";
-import { B2ExtWorkspace } from "../b2/conn";
+import { B2ExtWorkspace } from "../b2/workspace";
 import * as _ from "lodash";
 import { exportFiles, hasUncommitedLocalChanges } from "../b2/fs";
 
@@ -15,12 +15,12 @@ export function onPullCommand(ctx: B2ExtContext) {
     busy = true;
 
     try {
-      const currentEntry = ctx.currentEntry;
+      const info = ctx.currentDocInfo;
       let options;
-      if (!currentEntry) {
+      if (!info) {
         options = ctx.getAllWorkspaces().map(getOption);
       } else {
-        options = [getOption(currentEntry)];
+        options = [getOption(info.workspace)];
       }
 
       const selected = await vscode.window.showQuickPick(options, {
@@ -53,11 +53,8 @@ export function onPullCommand(ctx: B2ExtContext) {
         return;
       }
 
-      for (let e of workspace.app.entries) {
-        await exportFiles(
-          workspace.workspaceFolder.uri,
-          workspace.app.entry(e.name)
-        );
+      for (let e of workspace.entries) {
+        await exportFiles(e);
       }
     } catch (e) {
       vscode.window.showErrorMessage(`Pull failed: ${e.message}`);

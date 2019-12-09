@@ -35,8 +35,10 @@
   },
   "devDependencies": {
     "@types/glob": "^7.1.1",
+    "@types/json-stable-stringify": "^1.0.32",
     "@types/mocha": "^5.2.7",
     "@types/node": "^12.11.7",
+    "@types/proper-lockfile": "^4.1.1",
     "@types/vscode": "^1.40.0",
     "glob": "^7.1.5",
     "mocha": "^6.2.2",
@@ -47,8 +49,11 @@
   },
   "dependencies": {
     "@types/lodash": "^4.14.149",
+    "async-mutex": "^0.1.4",
     "b2-sdk": "^1.6.0",
+    "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.15",
+    "proper-lockfile": "^4.1.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "rxjs": "^6.5.3"

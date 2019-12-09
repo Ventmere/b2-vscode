@@ -13,7 +13,7 @@ export class StatusBar {
     this.item.text = `B2: ${text}`;
   }
 
-  setPath(app: string, entry: string | null) {
+  setPath(app: string, entry?: string) {
     if (entry) {
       this.setText(`${app} / ${entry}`);
     } else {

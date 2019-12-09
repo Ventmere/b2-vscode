@@ -7,30 +7,32 @@ import {
   workspace,
   TextEditor,
   WorkspaceFoldersChangeEvent,
-  TextDocument
+  TextDocument,
+  Event,
+  TextDocumentWillSaveEvent
 } from "vscode";
 
 import { StatusBar } from "./statusbar";
 import { BehaviorSubject } from "rxjs";
-import { ConnRegistry, B2ExtCurrentEntry } from "./conn";
+import { WorkspaceRegistry, B2ExtDocInfo } from "./workspace";
 
 export class B2ExtContext {
   private statusBar: StatusBar;
-  private connReg: ConnRegistry;
+  private connReg: WorkspaceRegistry;
 
   private _currentDocument = new BehaviorSubject<TextDocument | null>(null);
   get currentDocument$() {
     return this._currentDocument;
   }
 
-  private _currentEntry: B2ExtCurrentEntry | null = null;
-  get currentEntry() {
-    return this._currentEntry;
+  private _currentDocInfo: B2ExtDocInfo | null = null;
+  get currentDocInfo() {
+    return this._currentDocInfo;
   }
 
   constructor(private ctx: ExtensionContext, statusBarItem: StatusBarItem) {
     this.statusBar = new StatusBar(statusBarItem);
-    this.connReg = new ConnRegistry(this._currentDocument);
+    this.connReg = new WorkspaceRegistry(this._currentDocument);
 
     ctx.subscriptions.push(
       workspace.onDidChangeWorkspaceFolders(this.handleChangeWorkspaceFolders)
@@ -51,13 +53,25 @@ export class B2ExtContext {
       this.handleChangeActiveTextEditor(window.activeTextEditor);
     }
 
-    this.connReg.currentEntry$.subscribe(e => {
-      if (e) {
-        this.statusBar.setPath(e.app.name, e.entryName);
+    ctx.subscriptions.push(
+      workspace.onDidSaveTextDocument(this.handleDidSaveTextDocument)
+    );
+
+    this.connReg.currentDocInfo$.subscribe(info => {
+      if (info) {
+        console.log(
+          info.workspace.app.name,
+          info.entry && info.entry.name,
+          info.ref
+        );
+        this.statusBar.setPath(
+          info.workspace.app.name,
+          info.entry && info.entry.name
+        );
       } else {
         this.statusBar.hide();
       }
-      this._currentEntry = e;
+      this._currentDocInfo = info;
     });
   }
 
@@ -81,6 +95,17 @@ export class B2ExtContext {
       this._currentDocument.next(null);
     }
   };
+
+  handleDidSaveTextDocument = (doc: TextDocument) => {
+    const info = this.connReg.findDocInfo(doc);
+    if (info && info.ref) {
+      window.showInformationMessage(`Saving ${info.ref.handle}`);
+    }
+  };
+
+  dispose() {
+    this.connReg.dispose();
+  }
 }
 
 export function init(ctx: ExtensionContext) {
