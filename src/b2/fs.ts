@@ -5,15 +5,21 @@ import * as _ from "lodash";
 import { Uri, workspace, window, ProgressLocation } from "vscode";
 import { TextEncoder } from "util";
 import * as child_process from "child_process";
-import { lstat } from "fs";
 import { getFileChecksum, getControllerChecksum } from "./checksum";
-import { createDirectoryIfNotExists } from "./utils";
+import {
+  createDirectoryIfNotExists,
+  isFileNotFoundError,
+  joinUriPath,
+  stringifyJSONStable,
+  isFileExistsError
+} from "./utils";
 import {
   B2ExtEntryState,
   LocalDataMap,
   getLocalHandleMapKey,
   B2ExtObjectType,
-  LocalDataMapKey
+  LocalDataMapKey,
+  B2ExtObjectRef
 } from "./state";
 
 const CHUNK_SIZE = 100;
@@ -81,6 +87,11 @@ export async function exportFiles(state: B2ExtEntryState) {
         entry.controller.getSnapshot()
       ]);
 
+      // fix controller items without revision
+      for (let c of controllerItems) {
+        c.revision = c.revision || c.id;
+      }
+
       const files = fileItems.filter(f => {
         const localRevision = state.getRevision(f.id);
         return !localRevision || localRevision !== f.revision;
@@ -89,9 +100,6 @@ export async function exportFiles(state: B2ExtEntryState) {
 
       const controllers = controllerItems.filter(f => {
         const localRevision = state.getRevision(f.id);
-        if (!localRevision && !f.revision) {
-          return false;
-        }
         return !localRevision || localRevision !== f.revision;
       });
       const controllerCount = controllers.length;
@@ -111,16 +119,19 @@ export async function exportFiles(state: B2ExtEntryState) {
         for (let file of files) {
           localRevisionsMap[file.id!] = file.revision!;
           localChecksumMap[file.id!] = getFileChecksum(file);
-          localHandleMap[
-            getLocalHandleMapKey(B2ExtObjectType.File, file.handle!)
-          ] = file.id!;
           const handle = file.handle!;
           switch (file.type) {
             case "huz": {
+              localHandleMap[
+                getLocalHandleMapKey(B2ExtObjectType.Component, file.handle!)
+              ] = file.id!;
               await exportHuzFile(uris.component, handle, file);
               break;
             }
             case "less": {
+              localHandleMap[
+                getLocalHandleMapKey(B2ExtObjectType.Style, file.handle!)
+              ] = file.id!;
               await exportLessFile(uris.style, handle, file);
               break;
             }
@@ -145,7 +156,7 @@ export async function exportFiles(state: B2ExtEntryState) {
         const controllers = await entry.controller.getSnapshotItems(chunk);
         for (let c of controllers) {
           const handle = c.handle!;
-          localRevisionsMap[c.id!] = c.revision!;
+          localRevisionsMap[c.id!] = c.revision || c.id!;
           localChecksumMap[c.id!] = getControllerChecksum(c);
           localHandleMap[
             getLocalHandleMapKey(B2ExtObjectType.Controller, c.handle!)
@@ -202,12 +213,20 @@ async function exportHuzFile(uri: Uri, handle: string, file: FileEntry) {
           path: file.path,
           controller_id: file.controller_id,
           override_params: file.override_params
-        },
+        } as LocalFileProps,
         null,
         "  "
       )
     )
   );
+}
+
+export interface LocalFileProps {
+  path: string;
+  controller_id?: string;
+  override_params?: {
+    [key: string]: string;
+  };
 }
 
 export async function exportLessFile(
@@ -248,7 +267,6 @@ export async function exportController(
     enc.encode(
       JSON.stringify(
         {
-          id: c.id,
           default_params: c.default_params,
           default_query: c.default_query,
           default_path: c.default_path,
@@ -256,12 +274,27 @@ export async function exportController(
           exported: c.exported,
           methods: c.methods,
           middleware: c.middleware
-        },
+        } as LocalControllerProps,
         null,
         "  "
       )
     )
   );
+}
+
+interface LocalControllerProps {
+  id?: string;
+  default_path: string;
+  description: string;
+  exported: boolean;
+  default_params?: {
+    [key: string]: string;
+  };
+  default_query?: {
+    [key: string]: string;
+  };
+  methods: string[];
+  middleware?: string[];
 }
 
 export function isComponentFilename(handle: string, filename: string) {
@@ -273,7 +306,140 @@ export function isComponentFilename(handle: string, filename: string) {
 }
 
 export function isControllerFilename(handle: string, filename: string) {
-  return [`${handle}.controller.less`, `${handle}.controller.json`].includes(
+  return [`${handle}.controller.js`, `${handle}.controller.json`].includes(
     filename
   );
+}
+
+export function getLocalB2ObjectUri(
+  state: B2ExtEntryState,
+  type: B2ExtObjectType,
+  handle: string
+): Uri {
+  const uris = state.subFolderUris;
+  switch (type) {
+    case B2ExtObjectType.Component:
+      return uris.component.with({
+        path: path.join(uris.component.path, handle)
+      });
+    case B2ExtObjectType.Style:
+      return uris.component.with({
+        path: path.join(uris.style.path, handle)
+      });
+    case B2ExtObjectType.Controller:
+      return uris.controller.with({
+        path: path.join(uris.controller.path, handle)
+      });
+  }
+}
+
+async function readTextFileOrCreateWithDefault(
+  uri: Uri,
+  defaultText: string | (() => string) = ""
+): Promise<string> {
+  try {
+    const data = await workspace.fs.readFile(uri);
+    return data.toString();
+  } catch (e) {
+    if (isFileNotFoundError(e)) {
+      const enc = new TextEncoder();
+      const text =
+        typeof defaultText === "string" ? defaultText : defaultText();
+      try {
+        await workspace.fs.writeFile(uri, enc.encode(text));
+      } catch (e) {
+        if (!isFileExistsError(e)) {
+          throw e;
+        }
+      }
+      return text;
+    } else {
+      throw e;
+    }
+  }
+}
+
+async function readJsonOrCreateWithDefault<T>(uri: Uri, defaultValue: T) {
+  const jsonText = await readTextFileOrCreateWithDefault(uri, () =>
+    stringifyJSONStable(defaultValue)
+  );
+  try {
+    const parsed = JSON.parse(jsonText);
+    return parsed as T;
+  } catch (e) {
+    throw new Error(`Parse json '${uri.path}' error: ${e.message}`);
+  }
+}
+
+export async function buildLocalB2Object(
+  ref: B2ExtObjectRef
+): Promise<FileEntry | ControllerEntry> {
+  const { id, handle } = ref;
+  switch (ref.type) {
+    case B2ExtObjectType.Component: {
+      const [html, less, json] = await Promise.all([
+        readTextFileOrCreateWithDefault(
+          joinUriPath(ref.uri, `${handle}.component.html`)
+        ),
+        readTextFileOrCreateWithDefault(
+          joinUriPath(ref.uri, `${handle}.component.less`)
+        ),
+        readJsonOrCreateWithDefault(
+          joinUriPath(ref.uri, `${handle}.component.json`),
+          {
+            path: ""
+          } as LocalFileProps
+        )
+      ]);
+      return {
+        ...json,
+        id,
+        handle,
+        type: "huz",
+        content: html,
+        revision: ref.revision,
+        children: [
+          {
+            handle: "less",
+            type: "less",
+            content: less
+          }
+        ]
+      } as FileEntry;
+    }
+    case B2ExtObjectType.Style: {
+      const less = await readTextFileOrCreateWithDefault(ref.uri);
+      return {
+        id,
+        handle,
+        type: "less",
+        content: less,
+        revision: ref.revision
+      } as FileEntry;
+    }
+    case B2ExtObjectType.Controller: {
+      const [js, json] = await Promise.all([
+        readTextFileOrCreateWithDefault(
+          joinUriPath(ref.uri, `${handle}.controller.js`)
+        ),
+        readJsonOrCreateWithDefault<LocalControllerProps>(
+          joinUriPath(ref.uri, `${handle}.controller.json`),
+          {
+            id: id || undefined,
+            default_path: "",
+            description: "",
+            exported: false,
+            methods: ["GET"]
+          }
+        )
+      ]);
+      return {
+        ...json,
+        id: id || undefined,
+        handle,
+        script: js,
+        revision: ref.revision
+      } as ControllerEntry;
+    }
+  }
 }

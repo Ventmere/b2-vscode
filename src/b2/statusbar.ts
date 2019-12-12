@@ -10,15 +10,13 @@ export class StatusBar {
   }
 
   setText(text: string) {
-    this.item.text = `B2: ${text}`;
+    this.item.text = `${text}`;
   }
 
-  setPath(app: string, entry?: string) {
-    if (entry) {
-      this.setText(`${app} / ${entry}`);
-    } else {
-      this.setText(app);
-    }
+  setPath(app: string, entry?: string, handle?: string) {
+    this.setText(
+      [app, entry, handle].filter(v => !!v).join(" $(chevron-right) ")
+    );
     this.item.show();
   }
 

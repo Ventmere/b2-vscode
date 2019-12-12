@@ -1,0 +1,26 @@
+{
+  "scopeName": "text.html.huz",
+  "patterns": [{ "include": "#brackets" }, { "include": "text.html.basic" }],
+  "repository": {
+    "brackets": {
+      "begin": "{{",
+      "end": "}}",
+      "beginCaptures": {
+        "0": { "name": "support.constant.huz" }
+      },
+      "endCaptures": {
+        "0": { "name": "support.constant.huz" }
+      },
+      "name": "markup.bold",
+      "patterns": [{ "include": "#partial" }, { "include": "#variable" }]
+    },
+    "partial": {
+      "name": "support.class.huz",
+      "match": "(?<=[<>])[a-zA-Z0-9_\\-:]+"
+    },
+    "variable": {
+      "name": "support.variable.huz",
+      "match": "[a-zA-Z0-9\\_-]+"
+    }
+  }
+}

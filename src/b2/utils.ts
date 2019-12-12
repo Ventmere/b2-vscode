@@ -1,4 +1,6 @@
 import { FileSystemError, Uri, workspace } from "vscode";
+import stringify = require("json-stable-stringify");
+import * as path from "path";
 
 export async function sleep(ms: number) {
   return new Promise(res => setTimeout(() => res(), ms));
@@ -22,4 +24,31 @@ export async function createDirectoryIfNotExists(uri: Uri) {
       throw e;
     }
   }
+}
+
+export function stringifyJSONStable<T>(v: T) {
+  return stringify(v, {
+    space: 2
+  });
+}
+
+export function joinUriPath(uri: Uri, ...paths: string[]) {
+  return uri.with({
+    path: path.join(uri.path, ...paths)
+  });
+}
+
+export function searchAll<T>(
+  str: string,
+  re: RegExp,
+  extract: (index: number, length: number, captures: string[]) => T
+): T[] {
+  re.lastIndex = 0;
+  const result = [];
+  let match;
+  while ((match = re.exec(str)) != null) {
+    result.push(extract(match.index, match[0].length, match.slice(1)));
+  }
+  re.lastIndex = 0;
+  return result;
 }

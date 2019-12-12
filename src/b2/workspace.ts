@@ -5,7 +5,8 @@ import {
   ProgressLocation,
   FileSystemError,
   TextDocument,
-  workspace
+  workspace,
+  EventEmitter
 } from "vscode";
 import { B2, connect, B2Entry } from "b2-sdk";
 import { loadConfigFile } from "./config";
@@ -17,9 +18,56 @@ import { isFileNotFoundError } from "./utils";
 import * as _ from "lodash";
 import * as lockfile from "proper-lockfile";
 
+export class B2AppConfig {
+  readonly pageModuleIds: string[];
+  private idRefLookup = new Map<string, B2ExtEntryState>();
+  private assetBaseUrlLookup = new Map<string, string>();
+
+  constructor(app: B2, entries: B2ExtEntryState[]) {
+    const pageModules = app.modules["page"];
+    this.pageModuleIds = [];
+    if (pageModules) {
+      for (let { id, path } of pageModules) {
+        const e = entries.find(e => e.entryLocalPath === path);
+        if (id && e) {
+          this.pageModuleIds.push(id);
+          this.idRefLookup.set(id, e);
+          console.log(`pageModule: id = ${id}, entry = ${e.entryLocalPath}`);
+        }
+      }
+    }
+    this.pageModuleIds.sort();
+
+    const assetModules = app.modules["asset"];
+    if (assetModules) {
+      const base = assetModules.find(m => !m.path);
+      for (let e of entries) {
+        const override = assetModules.find(m => m.path === e.entryLocalPath);
+        if (override) {
+          this.assetBaseUrlLookup.set(
+            e.entryLocalPath,
+            override.metadata.endpoint
+          );
+        } else if (base) {
+          this.assetBaseUrlLookup.set(e.entryLocalPath, base.metadata.endpoint);
+        }
+      }
+    }
+  }
+
+  getEntryByPageModuleId(id: string) {
+    return this.idRefLookup.get(id);
+  }
+
+  getAssetBaseUrlByEntryLocalPath(path: string) {
+    return this.assetBaseUrlLookup.get(path);
+  }
+}
+
 export interface B2ExtWorkspace {
   workspaceFolder: WorkspaceFolder;
   app: B2;
+  appConfig: B2AppConfig;
   entries: B2ExtEntryState[];
 }
 
@@ -57,14 +105,20 @@ export class WorkspaceRegistry {
     return this._currentDocInfo;
   }
 
-  findDocInfo(doc: TextDocument) {
+  findDocInfo(doc: TextDocument | Uri) {
     const conns = this.conns$.value;
-    return findEntry(conns, doc.uri);
+    if (doc instanceof Uri) {
+      return findEntry(conns, doc);
+    } else {
+      return findEntry(conns, doc.uri);
+    }
   }
 
   getAllWorkspaces(): B2ExtWorkspace[] {
     return this.conns$.value;
   }
+
+  onChange = new EventEmitter();
 
   constructor(private currentDocument$: BehaviorSubject<TextDocument | null>) {}
 
@@ -77,6 +131,7 @@ export class WorkspaceRegistry {
       this.unlockMap.set(workspace, unlock);
     }
     this.conns$.next(next);
+    this.onChange.fire();
   }
 
   async remove(folders: readonly WorkspaceFolder[]) {
@@ -91,6 +146,7 @@ export class WorkspaceRegistry {
       this.unlockMap.delete(key);
     }
     this.conns$.next(next);
+    this.onChange.fire();
   }
 
   dispose() {
@@ -126,7 +182,6 @@ async function connectWorkspace(
 
         const config = await loadConfigFile(folder.uri);
         const app = await connect(config);
-        console.log(`app: ${app.name}`);
         const states = await Promise.all(
           app.entries.map(async entry => {
             const r = app.entry(entry.name);
@@ -146,11 +201,14 @@ async function connectWorkspace(
           })
         );
 
+        const entries = states.filter(v => !!v) as B2ExtEntryState[];
+
         return {
           workspace: {
             workspaceFolder: folder,
             app,
-            entries: states.filter(v => !!v) as B2ExtEntryState[]
+            appConfig: new B2AppConfig(app, entries),
+            entries
           },
           unlock
         };
@@ -193,6 +251,8 @@ function findEntry(conns: B2ExtWorkspace[], uri: Uri): B2ExtDocInfo | null {
   return {
     workspace: conn,
     entry,
-    ref: entry.resolveRef(posixPath.slice(entry.entryLocalPath.length + 1))
+    ref: entry.resolveRefByPath(
+      posixPath.slice(entry.entryLocalPath.length + 1)
+    )
   } as B2ExtDocInfo;
 }

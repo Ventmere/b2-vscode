@@ -3,6 +3,7 @@
   "displayName": "Ventmere B2",
   "description": "Integrates Ventmere B2 into VS Code.",
   "version": "0.1.0",
+  "icon": "https://ventmere-s2.us-east-1.linodeobjects.com/public/b2.png",
   "engines": {
     "vscode": "^1.40.0"
   },
@@ -10,21 +11,99 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:ventmere-b2.init",
-    "workspaceContains:/b2config.json"
+    "workspaceContains:/b2config.json",
+    "onView:b2Pages"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "ventmere-b2.init",
-        "title": "B2: Initialize Workspace"
+        "command": "ventmere-b2.pull",
+        "title": "B2: Pull Source Code",
+        "icon": "media/b2-pull.svg"
       },
       {
-        "command": "ventmere-b2.pull",
-        "title": "B2: Pull Source Code"
+        "command": "ventmere-b2.show-app-config",
+        "title": "B2: Show App Config"
+      },
+      {
+        "command": "ventmere-b2.reload",
+        "title": "B2: Reload Local Metadata",
+        "icon": "media/b2-refresh.svg"
+      },
+      {
+        "command": "ventmere-b2.upload-asset",
+        "title": "B2: Upload Asset",
+        "icon": "media/b2-upload.svg"
+      },
+      {
+        "command": "ventmere-b2.preview",
+        "title": "B2: Preview",
+        "icon": "./media/b2-preview.svg"
       }
-    ]
+    ],
+    "languages": [
+      {
+        "id": "huz",
+        "aliases": [
+          "B2 Mustache"
+        ],
+        "extensions": [
+          ".component.html"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "huz",
+        "scopeName": "text.html.huz",
+        "path": "./syntaxes/huz.tmGrammar.json",
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "b2-page-explorer",
+          "title": "B2 Explorer",
+          "icon": "media/b2.svg"
+        }
+      ]
+    },
+    "views": {
+      "b2-page-explorer": [
+        {
+          "id": "b2Pages",
+          "name": "Pages"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "ventmere-b2.pull",
+          "when": "view == b2Pages",
+          "group": "navigation"
+        },
+        {
+          "command": "ventmere-b2.reload",
+          "when": "view == b2Pages",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceLangId == huz",
+          "command": "ventmere-b2.preview",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceLangId == huz || resourceLangId == less",
+          "command": "ventmere-b2.upload-asset",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "yarn run compile",
@@ -49,13 +128,16 @@
   },
   "dependencies": {
     "@types/lodash": "^4.14.149",
+    "@types/shortid": "^0.0.29",
     "async-mutex": "^0.1.4",
-    "b2-sdk": "^1.6.0",
+    "b2-sdk": "^1.7.0",
     "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.15",
+    "moment": "^2.24.0",
     "proper-lockfile": "^4.1.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
-    "rxjs": "^6.5.3"
+    "rxjs": "^6.5.3",
+    "shortid": "^2.2.15"
   }
 }

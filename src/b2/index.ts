@@ -9,12 +9,15 @@ import {
   WorkspaceFoldersChangeEvent,
   TextDocument,
   Event,
-  TextDocumentWillSaveEvent
+  TextDocumentWillSaveEvent,
+  EventEmitter,
+  Disposable
 } from "vscode";
 
 import { StatusBar } from "./statusbar";
 import { BehaviorSubject } from "rxjs";
 import { WorkspaceRegistry, B2ExtDocInfo } from "./workspace";
+import { Node } from "./tree-view";
 
 export class B2ExtContext {
   private statusBar: StatusBar;
@@ -30,30 +33,31 @@ export class B2ExtContext {
     return this._currentDocInfo;
   }
 
+  public readonly onDidChangeTreeData: EventEmitter<
+    Node | undefined
+  > = new EventEmitter();
+
+  subscriptions: {
+    dispose(): any;
+  }[] = [];
+
   constructor(private ctx: ExtensionContext, statusBarItem: StatusBarItem) {
     this.statusBar = new StatusBar(statusBarItem);
     this.connReg = new WorkspaceRegistry(this._currentDocument);
 
-    ctx.subscriptions.push(
+    this.subscriptions.push(
+      this.connReg.onChange.event(() => this.onDidChangeTreeData.fire())
+    );
+
+    this.subscriptions.push(
       workspace.onDidChangeWorkspaceFolders(this.handleChangeWorkspaceFolders)
     );
 
-    if (workspace.workspaceFolders) {
-      this.handleChangeWorkspaceFolders({
-        added: workspace.workspaceFolders,
-        removed: []
-      });
-    }
-
-    ctx.subscriptions.push(
+    this.subscriptions.push(
       window.onDidChangeActiveTextEditor(this.handleChangeActiveTextEditor)
     );
 
-    if (window.activeTextEditor) {
-      this.handleChangeActiveTextEditor(window.activeTextEditor);
-    }
-
-    ctx.subscriptions.push(
+    this.subscriptions.push(
       workspace.onDidSaveTextDocument(this.handleDidSaveTextDocument)
     );
 
@@ -66,17 +70,47 @@ export class B2ExtContext {
         );
         this.statusBar.setPath(
           info.workspace.app.name,
-          info.entry && info.entry.name
+          info.entry && info.entry.name,
+          info.ref && info.ref.handle
         );
       } else {
         this.statusBar.hide();
       }
       this._currentDocInfo = info;
     });
+
+    if (workspace.workspaceFolders) {
+      this.connReg.add(workspace.workspaceFolders);
+    }
+    if (window.activeTextEditor) {
+      this.handleChangeActiveTextEditor(window.activeTextEditor);
+    }
   }
 
   getAllWorkspaces() {
     return this.connReg.getAllWorkspaces();
+  }
+
+  getActiveWorkspace() {
+    const all = this.getAllWorkspaces();
+    if (all.length === 1) {
+      return all[0];
+    }
+
+    if (!window.activeTextEditor) {
+      return null;
+    }
+
+    const folder = workspace.getWorkspaceFolder(
+      window.activeTextEditor.document.uri
+    );
+    return (
+      this.getAllWorkspaces().find(w => w.workspaceFolder === folder) || null
+    );
+  }
+
+  findDocInfo(doc: TextDocument | Uri) {
+    return this.connReg.findDocInfo(doc);
   }
 
   handleChangeWorkspaceFolders = (e: WorkspaceFoldersChangeEvent) => {
@@ -98,12 +132,13 @@ export class B2ExtContext {
 
   handleDidSaveTextDocument = (doc: TextDocument) => {
     const info = this.connReg.findDocInfo(doc);
-    if (info && info.ref) {
-      window.showInformationMessage(`Saving ${info.ref.handle}`);
+    if (info && info.entry && info.ref) {
+      info.entry.enqueueSave(info.ref);
     }
   };
 
   dispose() {
+    this.subscriptions.forEach(s => s.dispose());
     this.connReg.dispose();
   }
 }

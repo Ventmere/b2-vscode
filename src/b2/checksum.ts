@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { FileEntry, ControllerEntry } from "b2-sdk";
-import * as stableStringify from "json-stable-stringify";
 import * as _ from "lodash";
+import { stringifyJSONStable } from "./utils";
 
 function md5(items: any[]) {
   const hasher = createHash("md5");
@@ -24,7 +24,7 @@ export function getFileChecksum(file: FileEntry) {
       const template = file.content;
       const less = file.children!.find(c => c.type === "less");
       const options = _.pick(file, HUZ_OPTION_KEYS);
-      items = [template, less, stableStringify(options)];
+      items = [template, less, stringifyJSONStable(options)];
       break;
     }
     case "less": {
@@ -44,13 +44,12 @@ const CONTROLLER_OPTION_KEYS: Array<keyof ControllerEntry> = [
   "description",
   "exported",
   "middleware",
-  "methods",
-  "script"
+  "methods"
 ];
 
 export function getControllerChecksum(controller: ControllerEntry) {
   return md5([
     controller.script,
-    stableStringify(_.pick(controller, CONTROLLER_OPTION_KEYS))
+    stringifyJSONStable(_.pick(controller, CONTROLLER_OPTION_KEYS))
   ]);
 }

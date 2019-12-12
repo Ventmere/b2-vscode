@@ -16,6 +16,7 @@ export function onPullCommand(ctx: B2ExtContext) {
 
     try {
       const info = ctx.currentDocInfo;
+
       let options;
       if (!info) {
         options = ctx.getAllWorkspaces().map(getOption);
@@ -60,6 +61,8 @@ export function onPullCommand(ctx: B2ExtContext) {
       vscode.window.showErrorMessage(`Pull failed: ${e.message}`);
       console.error(e.stack);
     }
+
+    ctx.onDidChangeTreeData.fire();
 
     busy = false;
   };
