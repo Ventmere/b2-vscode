@@ -3,13 +3,18 @@
   "displayName": "Ventmere B2",
   "description": "Integrates Ventmere B2 into VS Code.",
   "version": "0.1.0",
-  "icon": "https://ventmere-s2.us-east-1.linodeobjects.com/public/b2.png",
+  "icon": "media/b2.png",
+  "publisher": "ventmere",
   "engines": {
     "vscode": "^1.40.0"
   },
   "categories": [
     "Other"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ventmere/b2-vscode.git"
+  },
   "activationEvents": [
     "workspaceContains:/b2config.json",
     "onView:b2Pages"
