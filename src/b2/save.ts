@@ -41,7 +41,10 @@ export class SaveQueue {
           window.showInformationMessage(`Saved to B2: ${node.ref.handle}`);
         } catch (e) {
           window.showErrorMessage(
-            `Save to B2 failed: ${node.ref.handle}: ${e.message}`
+            `Save to B2 failed:\n${node.ref.handle}: ${e.message}`,
+            {
+              modal: true
+            }
           );
         }
       }

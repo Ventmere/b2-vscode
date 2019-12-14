@@ -6,7 +6,8 @@ Integrates Ventmere B2 into VS Code.
 
 - Download B2 components and controllers to file system
 - Upload after save
-- Partial/Layout highlight
+- Partial/Layout highlight/autocomplete
+- Controller link/run
 - Links to component/assets
 - Asset Upload
 - Page Explorer
@@ -19,6 +20,21 @@ Integrates Ventmere B2 into VS Code.
 ## Known Issues
 
 ## Release Notes
+
+### 0.2.0
+
+#### Added
+
+- Auto complete in components and LESS files
+- Run Controller command
+- Insert Controller ID command
+- Display controller name in \*.component.json
+- Jump to Controller file
+- Jump to LESS file
+
+#### Fixed
+
+- B2 Mustache language no longer applied to Angular component html files (Run `B2: Upgrade` command to rename your local files)
 
 ### 0.1.0
 

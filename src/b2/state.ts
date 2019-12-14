@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex";
 import { Uri, WorkspaceFolder } from "vscode";
-import { B2, B2Entry } from "b2-sdk";
+import { B2, B2Entry, FileEntry, ControllerEntry } from "b2-sdk";
 import * as path from "path";
 import * as vscode from "vscode";
 import { TextEncoder } from "util";
@@ -14,10 +14,12 @@ import {
   isComponentFilename,
   getLocalB2ObjectUri,
   isControllerFilename,
-  LocalFileProps
+  LocalFileProps,
+  buildLocalB2Object
 } from "./fs";
 import * as _ from "lodash";
 import { SaveQueue } from "./save";
+import { getControllerChecksum, getFileChecksum } from "./checksum";
 
 export class B2ExtEntryState {
   private mutex: Mutex = new Mutex();
@@ -119,6 +121,74 @@ export class B2ExtEntryState {
     await Promise.all(tasks);
   }
 
+  async updateLocalMapsForRename(
+    type: B2ExtObjectType,
+    id: string,
+    handle: string,
+    revision: string,
+    newHandle: string
+  ) {
+    const tasks = [
+      this.updateLocalMap(LocalDataMapKey.Revision, {
+        [id]: revision
+      }),
+      this.updateLocalMap(LocalDataMapKey.Handle, map => {
+        delete map[getLocalHandleMapKey(type, handle)];
+        map[getLocalHandleMapKey(type, newHandle)] = id;
+        return map;
+      })
+    ];
+
+    await Promise.all(tasks);
+  }
+
+  async updateLocalMapsForDelete(
+    type: B2ExtObjectType,
+    id: string,
+    handle: string
+  ) {
+    const tasks = [
+      this.updateLocalMap(LocalDataMapKey.Checksum, map => {
+        delete map[id];
+        return map;
+      }),
+      this.updateLocalMap(LocalDataMapKey.Revision, map => {
+        delete map[id];
+        return map;
+      }),
+      this.updateLocalMap(LocalDataMapKey.Handle, map => {
+        delete map[getLocalHandleMapKey(type, handle)];
+        return map;
+      })
+    ];
+
+    await Promise.all(tasks);
+  }
+
+  getHandles(type: B2ExtObjectType): string[] {
+    const map = this.localMaps.get(LocalDataMapKey.Handle) || {};
+    const handles = [];
+    for (let key of Object.keys(map)) {
+      const p = `${type}|`;
+      if (key.startsWith(p)) {
+        handles.push(key.slice(p.length));
+      }
+    }
+    return handles;
+  }
+
+  getComponentHandles(): string[] {
+    return this.getHandles(B2ExtObjectType.Component);
+  }
+
+  getControllerHandles(): string[] {
+    return this.getHandles(B2ExtObjectType.Controller);
+  }
+
+  getStyleHandles(): string[] {
+    return this.getHandles(B2ExtObjectType.Style);
+  }
+
   async getPageInfos(): Promise<Array<PageInfo>> {
     const map = this.localMaps.get(LocalDataMapKey.Handle) || {};
     const handles = [];
@@ -149,9 +219,13 @@ export class B2ExtEntryState {
 
   async updateLocalMap(
     key: LocalDataMapKey,
-    map: LocalDataMap,
+    map: LocalDataMap | ((map: LocalDataMap) => LocalDataMap),
     replace: boolean = false
   ) {
+    if (typeof map === "function") {
+      map = map(this.localMaps.get(key) || {});
+    }
+
     if (_.isEmpty(map) && !replace) {
       return;
     }
@@ -183,7 +257,7 @@ export class B2ExtEntryState {
     this.idToHandleLookup.clear();
     const map = this.localMaps.get(LocalDataMapKey.Handle);
     if (map) {
-      for (let [id, handle] of Object.entries(map)) {
+      for (let [handle, id] of Object.entries(map)) {
         const [t, h] = handle.split("|");
         const type = parseInt(t, 10);
         if (type) {
@@ -194,6 +268,15 @@ export class B2ExtEntryState {
         }
       }
     }
+  }
+
+  getHandleById(id: string): string | null {
+    const handleRes = this.idToHandleLookup.get(id);
+    if (!handleRes) {
+      return null;
+    }
+
+    return handleRes.handle;
   }
 
   resolveRefById(id: string): B2ExtObjectRef | null {
@@ -279,6 +362,194 @@ export class B2ExtEntryState {
       }
       return null;
     }
+  }
+
+  async renameObject(ref: B2ExtObjectRef, newHandle: string) {
+    const { id, type, handle, uri } = ref;
+    if (!id) {
+      throw new Error(`Cannot find B2 object id.`);
+    }
+
+    if (this.getHandleId(type, newHandle)) {
+      throw new Error(`Object exists: ${newHandle}`);
+    }
+
+    const subFolders = this.subFolderUris;
+    let folder: Uri;
+    let op;
+    switch (type) {
+      case B2ExtObjectType.Component:
+        folder = subFolders.component;
+        op = async () => {
+          const file = await buildLocalB2Object(ref);
+          file.handle = newHandle;
+          const { revision } = await this.entry.file.update(file as FileEntry);
+          await vscode.workspace.fs.rename(
+            joinUriPath(uri, `${handle}.component.huz`),
+            joinUriPath(uri, `${newHandle}.component.huz`)
+          );
+          await vscode.workspace.fs.rename(
+            joinUriPath(uri, `${handle}.component.less`),
+            joinUriPath(uri, `${newHandle}.component.less`)
+          );
+          await vscode.workspace.fs.rename(
+            joinUriPath(uri, `${handle}.component.json`),
+            joinUriPath(uri, `${newHandle}.component.json`)
+          );
+          await vscode.workspace.fs.rename(uri, joinUriPath(folder, newHandle));
+          return revision!;
+        };
+        break;
+      case B2ExtObjectType.Style:
+        folder = subFolders.style;
+        op = async () => {
+          const file = await buildLocalB2Object(ref);
+          file.handle = newHandle;
+          const { revision } = await this.entry.file.update(file as FileEntry);
+          await vscode.workspace.fs.rename(uri, joinUriPath(folder, newHandle));
+          return revision!;
+        };
+        break;
+      case B2ExtObjectType.Controller:
+        folder = subFolders.controller;
+        op = async () => {
+          const controller = await buildLocalB2Object(ref);
+          controller.handle = newHandle;
+          const { revision } = await this.entry.controller.update(
+            controller as ControllerEntry
+          );
+          await vscode.workspace.fs.rename(
+            joinUriPath(uri, `${handle}.controller.js`),
+            joinUriPath(uri, `${newHandle}.controller.js`)
+          );
+          await vscode.workspace.fs.rename(
+            joinUriPath(uri, `${handle}.controller.json`),
+            joinUriPath(uri, `${newHandle}.controller.json`)
+          );
+          await vscode.workspace.fs.rename(uri, joinUriPath(folder, newHandle));
+          return revision!;
+        };
+        break;
+    }
+    await this.updateLocalMapsForRename(
+      type,
+      id,
+      newHandle,
+      await op(),
+      newHandle
+    );
+  }
+
+  async cloneObject(ref: B2ExtObjectRef, newHandle: string) {
+    const { id, type, handle, uri } = ref;
+    if (!id) {
+      throw new Error(`Cannot find B2 object id.`);
+    }
+
+    if (this.getHandleId(type, newHandle)) {
+      throw new Error(`Object exists: ${newHandle}`);
+    }
+
+    const subFolders = this.subFolderUris;
+    let folder: Uri;
+    let op;
+    switch (type) {
+      case B2ExtObjectType.Component:
+        folder = subFolders.component;
+        op = async () => {
+          const file = await buildLocalB2Object(ref);
+          file.handle = newHandle;
+          const entry = await this.entry.file.create(file as FileEntry);
+          await vscode.workspace.fs.copy(
+            joinUriPath(uri, `${handle}.component.huz`),
+            joinUriPath(folder, newHandle, `${newHandle}.component.huz`)
+          );
+          await vscode.workspace.fs.copy(
+            joinUriPath(uri, `${handle}.component.less`),
+            joinUriPath(folder, newHandle, `${newHandle}.component.less`)
+          );
+          const json =
+            (await this.loadJSON<{ path?: string }>(
+              joinUriPath(folder, handle, `${handle}.component.json`)
+            )) || {};
+          json.path = "";
+          const enc = new TextEncoder();
+          await vscode.workspace.fs.writeFile(
+            joinUriPath(folder, newHandle, `${newHandle}.component.json`),
+            enc.encode(stringifyJSONStable(json))
+          );
+          return [entry.id!, entry.revision!, getFileChecksum(entry)];
+        };
+        break;
+      case B2ExtObjectType.Style:
+        folder = subFolders.style;
+        op = async () => {
+          const file = await buildLocalB2Object(ref);
+          file.handle = newHandle;
+          const entry = await this.entry.file.create(file as FileEntry);
+          await vscode.workspace.fs.copy(uri, joinUriPath(folder, newHandle));
+          return [entry.id!, entry.revision!, getFileChecksum(entry)];
+        };
+        break;
+      case B2ExtObjectType.Controller:
+        folder = subFolders.controller;
+        op = async () => {
+          const controller = await buildLocalB2Object(ref);
+          controller.handle = newHandle;
+          const entry = await this.entry.controller.create(
+            controller as ControllerEntry
+          );
+          await vscode.workspace.fs.copy(
+            joinUriPath(uri, `${handle}.controller.js`),
+            joinUriPath(folder, newHandle, `${newHandle}.controller.huz`)
+          );
+          await vscode.workspace.fs.copy(
+            joinUriPath(uri, `${handle}.controller.json`),
+            joinUriPath(folder, newHandle, `${newHandle}.controller.json`)
+          );
+          return [entry.id!, entry.revision!, getControllerChecksum(entry)];
+        };
+        break;
+    }
+    const [newId, revision, checksum] = await op();
+    await this.updateLocalMapsForSave(
+      type,
+      newId,
+      newHandle,
+      revision,
+      checksum
+    );
+  }
+
+  async deleteObject(ref: B2ExtObjectRef) {
+    const { id, type, handle } = ref;
+    if (!id) {
+      throw new Error(`Cannot find B2 object id.`);
+    }
+
+    const subFolders = this.subFolderUris;
+    let folder;
+    let op;
+    switch (type) {
+      case B2ExtObjectType.Component:
+        folder = subFolders.component;
+        op = () => this.entry.file.delete(id);
+        break;
+      case B2ExtObjectType.Style:
+        folder = subFolders.component;
+        op = () => this.entry.file.delete(id);
+        break;
+      case B2ExtObjectType.Controller:
+        folder = subFolders.component;
+        op = () => this.entry.controller.delete(id);
+        break;
+    }
+
+    await vscode.workspace.fs.delete(joinUriPath(folder, handle), {
+      recursive: true
+    });
+    await this.updateLocalMapsForDelete(type, id, handle);
+    await op();
   }
 
   getHandleId(type: B2ExtObjectType, handle: string) {

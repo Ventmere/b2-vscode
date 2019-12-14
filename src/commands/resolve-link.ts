@@ -9,7 +9,7 @@ import { getB2AssetAbsoluteURL } from "../b2/asset";
 
 export interface ResolveLinkTarget {
   documentUri: vscode.Uri;
-  type: "component" | "controller" | "asset";
+  type: "component" | "style" | "controller" | "asset";
   path: string;
 }
 
@@ -22,7 +22,9 @@ export function onResolveLinkCommand(ctx: B2ExtContext) {
     }
 
     switch (target.type) {
-      case "component": {
+      case "component":
+      case "style":
+      case "controller": {
         let entry = info.entry;
         let { path } = target;
         if (path.includes(":")) {
@@ -42,20 +44,34 @@ export function onResolveLinkCommand(ctx: B2ExtContext) {
 
         console.log(`resolve-link: entry = ${entry.entryLocalPath}`);
 
-        const folderUri = getLocalB2ObjectUri(
-          entry,
-          B2ExtObjectType.Component,
-          path
-        );
+        if (target.type === "component") {
+          const folderUri = getLocalB2ObjectUri(
+            entry,
+            B2ExtObjectType.Component,
+            path
+          );
 
-        const htmlDoc = await vscode.workspace.openTextDocument(
-          joinUriPath(folderUri, `${path}.component.html`)
-        );
-        vscode.window.showTextDocument(htmlDoc, vscode.ViewColumn.One);
-        const lessDoc = await vscode.workspace.openTextDocument(
-          joinUriPath(folderUri, `${path}.component.less`)
-        );
-        vscode.window.showTextDocument(lessDoc, vscode.ViewColumn.Two);
+          const htmlDoc = await vscode.workspace.openTextDocument(
+            joinUriPath(folderUri, `${path}.component.huz`)
+          );
+          vscode.window.showTextDocument(htmlDoc, vscode.ViewColumn.One);
+          const lessDoc = await vscode.workspace.openTextDocument(
+            joinUriPath(folderUri, `${path}.component.less`)
+          );
+          vscode.window.showTextDocument(lessDoc, vscode.ViewColumn.Two);
+        } else if (target.type === "style") {
+          const uri = getLocalB2ObjectUri(entry, B2ExtObjectType.Style, path);
+          vscode.window.showTextDocument(uri);
+        } else if (target.type === "controller") {
+          const uri = getLocalB2ObjectUri(
+            entry,
+            B2ExtObjectType.Controller,
+            path
+          );
+          vscode.window.showTextDocument(
+            joinUriPath(uri, `${path}.controller.js`)
+          );
+        }
         break;
       }
 

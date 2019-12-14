@@ -88,7 +88,7 @@ export function onUploadAsset(ctx: B2ExtContext) {
     if (info.ref) {
       if (info.ref.type === B2ExtObjectType.Component) {
         const ext = extname(editor.document.uri.fsPath);
-        if (ext === ".html") {
+        if (ext === ".html" || ext === ".huz") {
           format = v => `asset:/${v}`;
         } else if (ext === ".less") {
           format = v => `asset-url("${v}")`;

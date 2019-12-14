@@ -37,6 +37,10 @@ export class B2ExtContext {
     Node | undefined
   > = new EventEmitter();
 
+  public get onDidChangeWorkspaces() {
+    return this.connReg.onChange.event;
+  }
+
   subscriptions: {
     dispose(): any;
   }[] = [];

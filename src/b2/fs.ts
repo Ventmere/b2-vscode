@@ -181,7 +181,7 @@ export async function exportFiles(state: B2ExtEntryState) {
 }
 
 // for huz file, create a folder <handle>, then create files:
-// - <handle>.html: html source code
+// - <handle>.huz: html source code
 // - <handle>.less: less source code
 // - <handle>.json: config (path, defualt params, controller binding...)
 async function exportHuzFile(uri: Uri, handle: string, file: FileEntry) {
@@ -190,7 +190,7 @@ async function exportHuzFile(uri: Uri, handle: string, file: FileEntry) {
   const enc = new TextEncoder();
   await workspace.fs.writeFile(
     uri.with({
-      path: path.join(base, `${handle}.component.html`)
+      path: path.join(base, `${handle}.component.huz`)
     }),
     enc.encode(file.content)
   );
@@ -299,7 +299,7 @@ interface LocalControllerProps {
 
 export function isComponentFilename(handle: string, filename: string) {
   return [
-    `${handle}.component.html`,
+    `${handle}.component.huz`,
     `${handle}.component.less`,
     `${handle}.component.json`
   ].includes(filename);
@@ -379,7 +379,7 @@ export async function buildLocalB2Object(
     case B2ExtObjectType.Component: {
       const [html, less, json] = await Promise.all([
         readTextFileOrCreateWithDefault(
-          joinUriPath(ref.uri, `${handle}.component.html`)
+          joinUriPath(ref.uri, `${handle}.component.huz`)
         ),
         readTextFileOrCreateWithDefault(
           joinUriPath(ref.uri, `${handle}.component.less`)
@@ -391,13 +391,12 @@ export async function buildLocalB2Object(
           } as LocalFileProps
         )
       ]);
-      return {
+      const entry = {
         ...json,
         id,
         handle,
         type: "huz",
         content: html,
-        revision: ref.revision,
         children: [
           {
             handle: "less",
@@ -406,16 +405,23 @@ export async function buildLocalB2Object(
           }
         ]
       } as FileEntry;
+      if (ref.revision) {
+        entry.revision = ref.revision;
+      }
+      return entry;
     }
     case B2ExtObjectType.Style: {
       const less = await readTextFileOrCreateWithDefault(ref.uri);
-      return {
+      const entry = {
         id,
         handle,
         type: "less",
-        content: less,
-        revision: ref.revision
+        content: less
       } as FileEntry;
+      if (ref.revision) {
+        entry.revision = ref.revision;
+      }
+      return entry;
     }
     case B2ExtObjectType.Controller: {
       const [js, json] = await Promise.all([
@@ -433,13 +439,16 @@ export async function buildLocalB2Object(
           }
         )
       ]);
-      return {
+      const entry = {
         ...json,
         id: id || undefined,
         handle,
-        script: js,
-        revision: ref.revision
+        script: js
       } as ControllerEntry;
+      if (ref.revision) {
+        entry.revision = ref.revision;
+      }
+      return entry;
     }
   }
 }

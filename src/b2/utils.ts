@@ -1,4 +1,11 @@
-import { FileSystemError, Uri, workspace } from "vscode";
+import {
+  FileSystemError,
+  Uri,
+  workspace,
+  TextDocument,
+  Position,
+  Range
+} from "vscode";
 import stringify = require("json-stable-stringify");
 import * as path from "path";
 
@@ -51,4 +58,18 @@ export function searchAll<T>(
   }
   re.lastIndex = 0;
   return result;
+}
+
+export function getDocumentLineBeforePosition(
+  document: TextDocument,
+  position: Position
+) {
+  return document.getText(
+    new Range(
+      position.with({
+        character: 0
+      }),
+      position
+    )
+  );
 }

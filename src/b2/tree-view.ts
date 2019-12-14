@@ -127,7 +127,7 @@ export class Node extends TreeItem {
       case Kind.Entry:
         return this.type.entry.entry.path;
       case Kind.Page:
-        return this.type.path;
+        return this.type.handle;
     }
   }
 
@@ -162,7 +162,7 @@ function getLabel(type: NodeType) {
       return type.entry.name;
     }
     case Kind.Page: {
-      return type.handle;
+      return type.path;
     }
   }
 }

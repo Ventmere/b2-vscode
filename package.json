@@ -45,6 +45,30 @@
         "command": "ventmere-b2.preview",
         "title": "B2: Preview",
         "icon": "./media/b2-preview.svg"
+      },
+      {
+        "command": "ventmere-b2.upgrade",
+        "title": "B2: Upgrade"
+      },
+      {
+        "command": "ventmere-b2.run-controller",
+        "title": "B2: Run Controller"
+      },
+      {
+        "command": "ventmere-b2.insert-controller-id",
+        "title": "B2: Insert Controller ID"
+      },
+      {
+        "command": "ventmere-b2.delete",
+        "title": "B2: Delete Current Object"
+      },
+      {
+        "command": "ventmere-b2.rename",
+        "title": "B2: Rename Current Object"
+      },
+      {
+        "command": "ventmere-b2.clone",
+        "title": "B2: Clone Current Object"
       }
     ],
     "languages": [
@@ -54,7 +78,7 @@
           "B2 Mustache"
         ],
         "extensions": [
-          ".component.html"
+          ".component.huz"
         ]
       }
     ],
