@@ -16,6 +16,7 @@ import { B2ExtContext } from "..";
 import { B2ExtObjectType } from "../state";
 import { getDocumentLineBeforePosition } from "../utils";
 import { B2ExtWorkspace } from "../workspace";
+import { extname } from "path";
 
 function getModuleIdCompletionItems(
   document: TextDocument,
@@ -76,7 +77,9 @@ export class B2ExtCompletionProvider implements CompletionItemProvider {
       }
     }
 
-    if (type === B2ExtObjectType.Component) {
+    const ext = extname(document.uri.path);
+
+    if (type === B2ExtObjectType.Component && ext === ".huz") {
       // partial name
       if (
         context.triggerCharacter === "<" ||
@@ -95,7 +98,10 @@ export class B2ExtCompletionProvider implements CompletionItemProvider {
           ...getModuleIdCompletionItems(document, position, info.workspace)
         ];
       }
-    } else if (type === B2ExtObjectType.Style) {
+    } else if (
+      (type === B2ExtObjectType.Component && ext === ".less") ||
+      type === B2ExtObjectType.Style
+    ) {
       // less name
       if (context.triggerCharacter !== '"') {
         return;
