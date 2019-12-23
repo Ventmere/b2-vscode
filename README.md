@@ -21,6 +21,18 @@ Integrates Ventmere B2 into VS Code.
 
 ## Release Notes
 
+### 0.2.2
+
+#### Added
+
+- Added a command to tag content elements with UUID for translation.
+
+### 0.2.1
+
+#### Fixed
+
+- Minor bug fixes
+
 ### 0.2.0
 
 #### Added
