@@ -1071,9 +1071,10 @@ b2-sdk@^1.7.0:
     request "^2.74.0"
     split "^1.0.0"
 
-b2-translate-utils@ventmere/b2-translate-utils:
+b2-translate-utils@^0.1.0:
   version "0.1.0"
-  resolved "https://codeload.github.com/ventmere/b2-translate-utils/tar.gz/e1beaed104a284eb4a51e44b484b5631b7f832c1"
+  resolved "https://registry.yarnpkg.com/b2-translate-utils/-/b2-translate-utils-0.1.0.tgz#85da6aad14a164372a36d7734e8e565c86c75e8d"
+  integrity sha512-BD4V9JlDX3PR0ZTyMCUJ3p51EsJdPbYJHSPYG5qJ8bGpAhMOXgaq4u6dAY77Iidkxgc/oSsWXZJDHHgV0vIyNw==
   dependencies:
     "@types/parse5" "^5.0.2"
     "@types/uuid" "^3.4.6"
