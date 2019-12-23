@@ -24,6 +24,7 @@ import {
   onRenameObject,
   onCloneObject
 } from "./commands/object";
+import { onTagContent } from "./commands/tag-content";
 
 const COMMANDS = {
   "ventmere-b2.pull": onPullCommand,
@@ -47,39 +48,12 @@ export function activate(context: vscode.ExtensionContext) {
   const treeDataProvider = new B2ExtTreeDataProvider(ctx);
   vscode.window.registerTreeDataProvider("b2Pages", treeDataProvider);
 
-  // context.subscriptions.push(
-  //   vscode.languages.registerHoverProvider("huz", {
-  //     provideHover(document, position, token) {
-  //       return new vscode.Hover(
-  //         new vscode.MarkdownString(
-  //           `![](https://cdn.ventmere.com/edifier-dev/uploads/2015-8/b7_web_01_a618d011-15b2-48a8-8468-cc7c98c20885.jpg)`
-  //         )
-  //       );
-  //     }
-  //   })
-  // );
-
-  // vscode.languages.registerDocumentHighlightProvider(
-  //   "huz",
-  //   new HuzHighlightProvider()
-  // );
-
   const contentProvider = new B2ExtContentProvider(ctx);
 
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider(
       "ventmere-b2",
-      contentProvider
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.languages.registerDocumentLinkProvider(
-      [
-        { scheme: "file", language: "huz" },
-        { scheme: "file", language: "less" }
-      ],
-      new B2ExtDocumentLinkProvider(ctx)
+      new B2ExtContentProvider(ctx)
     )
   );
 
@@ -154,6 +128,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerTextEditorCommand(
       "ventmere-b2.delete",
       onDeleteObject(ctx)
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      "ventmere-b2.tag-content",
+      onTagContent(ctx)
     )
   );
 }

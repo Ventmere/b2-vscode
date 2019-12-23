@@ -1,6 +1,7 @@
 import {
   Uri,
   window,
+  languages,
   ExtensionContext,
   StatusBarItem,
   StatusBarAlignment,
@@ -18,6 +19,7 @@ import { StatusBar } from "./statusbar";
 import { BehaviorSubject } from "rxjs";
 import { WorkspaceRegistry, B2ExtDocInfo } from "./workspace";
 import { Node } from "./tree-view";
+import { B2ExtDocumentLinkProvider } from "./language";
 
 export class B2ExtContext {
   private statusBar: StatusBar;
@@ -50,7 +52,10 @@ export class B2ExtContext {
     this.connReg = new WorkspaceRegistry(this._currentDocument);
 
     this.subscriptions.push(
-      this.connReg.onChange.event(() => this.onDidChangeTreeData.fire())
+      this.connReg.onChange.event(() => {
+        this.onDidChangeTreeData.fire();
+        this.registerProviders();
+      })
     );
 
     this.subscriptions.push(
@@ -144,6 +149,21 @@ export class B2ExtContext {
   dispose() {
     this.subscriptions.forEach(s => s.dispose());
     this.connReg.dispose();
+  }
+
+  private _providers: Array<Disposable> = [];
+  private registerProviders() {
+    this._providers.forEach(p => p.dispose());
+    this._providers.length = 0;
+    this._providers.push(
+      languages.registerDocumentLinkProvider(
+        [
+          { scheme: "file", language: "huz" },
+          { scheme: "file", pattern: "**/*/*.less" }
+        ],
+        new B2ExtDocumentLinkProvider(this)
+      )
+    );
   }
 }
 

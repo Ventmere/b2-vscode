@@ -5,12 +5,6 @@
     "brackets": {
       "begin": "{{",
       "end": "}}",
-      "beginCaptures": {
-        "0": { "name": "support.constant.huz" }
-      },
-      "endCaptures": {
-        "0": { "name": "support.constant.huz" }
-      },
       "name": "markup.bold",
       "patterns": [{ "include": "#partial" }, { "include": "#variable" }]
     },

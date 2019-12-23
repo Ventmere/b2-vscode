@@ -196,6 +196,7 @@ async function connectWorkspace(
               window.showErrorMessage(
                 `${folder.name}: Can not initialize B2 entry '${entry.name}': ${e.message}`
               );
+              console.error(e);
               return null;
             }
           })
@@ -220,6 +221,7 @@ async function connectWorkspace(
         window.showErrorMessage(
           `${folder.name}: Can not initialize B2 workspace: ${e.message}`
         );
+        console.error(e);
         return null;
       }
     }

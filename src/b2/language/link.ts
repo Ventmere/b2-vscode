@@ -16,7 +16,7 @@ import { B2ExtObjectType } from "../state";
 
 const R_PARTIAL_LINK = /(?<={{\s*[<>]\s*)([:a-zA-Z0-9_\-]+)(?=\s*?}})/g;
 const R_HUZ_LINK = /(?<=")(page|asset):\/\/([\-a-zA-Z0-9@:%._+~#=\/ ]+)(?=")/g;
-const R_CSS_IMPORT = /(?<=@import\s+")([a-zA-Z0-9\-_\.]+)(?=")"/g;
+const R_CSS_IMPORT = /(?<=@import\s+")([a-zA-Z0-9\-_\.]+)"/g;
 
 export class B2ExtDocumentLinkProvider implements DocumentLinkProvider {
   constructor(private ctx: B2ExtContext) {}
@@ -33,7 +33,8 @@ export class B2ExtDocumentLinkProvider implements DocumentLinkProvider {
     const content = document.getText();
     const result: DocumentLink[] = [];
 
-    if (info.ref.type === B2ExtObjectType.Component) {
+    const ext = path.extname(document.uri.path);
+    if (ext === ".huz") {
       searchAll(content, R_PARTIAL_LINK, (i, l, c) => {
         const [path] = c;
 
@@ -85,7 +86,7 @@ export class B2ExtDocumentLinkProvider implements DocumentLinkProvider {
           target
         });
       });
-    } else {
+    } else if (ext === ".less") {
       searchAll(content, R_CSS_IMPORT, (i, l, c) => {
         const [path] = c;
 

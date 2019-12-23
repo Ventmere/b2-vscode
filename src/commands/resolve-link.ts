@@ -4,7 +4,7 @@ import { B2ExtWorkspace } from "../b2/workspace";
 import * as _ from "lodash";
 import { joinUriPath } from "../b2/utils";
 import { getLocalB2ObjectUri } from "../b2/fs";
-import { B2ExtObjectType } from "../b2/state";
+import { B2ExtObjectType, B2ExtEntryState } from "../b2/state";
 import { getB2AssetAbsoluteURL } from "../b2/asset";
 
 export interface ResolveLinkTarget {
@@ -15,7 +15,6 @@ export interface ResolveLinkTarget {
 
 export function onResolveLinkCommand(ctx: B2ExtContext) {
   return async (target: ResolveLinkTarget) => {
-    console.log(target);
     const info = ctx.findDocInfo(target.documentUri);
     if (!info || !info.entry) {
       return;
@@ -88,5 +87,26 @@ export function onResolveLinkCommand(ctx: B2ExtContext) {
         break;
       }
     }
+  };
+}
+
+export function resolveLocalUri(
+  workspace: B2ExtWorkspace,
+  entry: B2ExtEntryState,
+  type: B2ExtObjectType,
+  handle: string
+) {
+  if (handle.includes(":")) {
+    const pageModuleId = handle.slice(0, handle.search(":"));
+    const refEntry = workspace.appConfig.getEntryByPageModuleId(pageModuleId);
+    if (!refEntry) {
+      return;
+    }
+    entry = refEntry;
+    handle = handle.slice(pageModuleId.length + 1);
+  }
+  return {
+    handle,
+    uri: getLocalB2ObjectUri(entry, type, handle)
   };
 }

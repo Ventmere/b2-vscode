@@ -1,7 +1,6 @@
 import { B2ExtContext } from "../b2";
 import * as vscode from "vscode";
 import { B2ExtObjectType } from "../b2/state";
-import { sleep } from "../b2/utils";
 
 export function onRenameObject(ctx: B2ExtContext) {
   return async (editor: vscode.TextEditor) => {

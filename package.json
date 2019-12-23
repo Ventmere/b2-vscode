@@ -2,7 +2,7 @@
   "name": "ventmere-b2",
   "displayName": "Ventmere B2",
   "description": "Integrates Ventmere B2 into VS Code.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "icon": "media/b2.png",
   "publisher": "ventmere",
   "engines": {
@@ -69,6 +69,10 @@
       {
         "command": "ventmere-b2.clone",
         "title": "B2: Clone Current Object"
+      },
+      {
+        "command": "ventmere-b2.tag-content",
+        "title": "B2: Tag Content for Translation"
       }
     ],
     "languages": [
@@ -160,6 +164,7 @@
     "@types/shortid": "^0.0.29",
     "async-mutex": "^0.1.4",
     "b2-sdk": "^1.7.0",
+    "b2-translate-utils": "ventmere/b2-translate-utils",
     "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
