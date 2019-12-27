@@ -23,6 +23,12 @@ Integrates Ventmere B2 into VS Code.
 
 ### 0.2.2
 
+#### Fixed
+
+- Fixed run controller output always showing 'Loading...'
+
+### 0.2.2
+
 #### Added
 
 - Added a command to tag content elements with UUID for translation.

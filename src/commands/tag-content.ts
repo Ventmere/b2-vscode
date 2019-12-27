@@ -75,7 +75,6 @@ export function onTagContent(ctx: B2ExtContext) {
       if (!r || !r.uri) {
         continue;
       }
-      console.log(joinUriPath(r.uri, `${r.handle}.component.huz`));
       const editor = await vscode.window.showTextDocument(
         joinUriPath(r.uri, `${r.handle}.component.huz`),
         {

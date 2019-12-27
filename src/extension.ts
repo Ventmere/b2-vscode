@@ -53,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider(
       "ventmere-b2",
-      new B2ExtContentProvider(ctx)
+      contentProvider
     )
   );
 

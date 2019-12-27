@@ -2,7 +2,7 @@
   "name": "ventmere-b2",
   "displayName": "Ventmere B2",
   "description": "Integrates Ventmere B2 into VS Code.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "icon": "media/b2.png",
   "publisher": "ventmere",
   "engines": {
