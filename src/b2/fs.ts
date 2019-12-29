@@ -184,7 +184,7 @@ export async function exportFiles(state: B2ExtEntryState) {
 // - <handle>.huz: html source code
 // - <handle>.less: less source code
 // - <handle>.json: config (path, defualt params, controller binding...)
-async function exportHuzFile(uri: Uri, handle: string, file: FileEntry) {
+export async function exportHuzFile(uri: Uri, handle: string, file: FileEntry) {
   const base = path.join(uri.path, handle!);
   await createDirectoryIfNotExists(uri.with({ path: base }));
   const enc = new TextEncoder();

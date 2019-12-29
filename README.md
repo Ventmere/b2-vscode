@@ -21,7 +21,13 @@ Integrates Ventmere B2 into VS Code.
 
 ## Release Notes
 
-### 0.2.2
+### 0.2.4
+
+#### Added
+
+- Added a command to sync local editing object's revision with B2.
+
+### 0.2.3
 
 #### Fixed
 

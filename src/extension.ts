@@ -25,6 +25,7 @@ import {
   onCloneObject
 } from "./commands/object";
 import { onTagContent } from "./commands/tag-content";
+import { onSyncRevision } from "./commands/sync-revision";
 
 const COMMANDS = {
   "ventmere-b2.pull": onPullCommand,
@@ -134,6 +135,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerTextEditorCommand(
       "ventmere-b2.tag-content",
       onTagContent(ctx)
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      "ventmere-b2.sync-revision",
+      onSyncRevision(ctx)
     )
   );
 }

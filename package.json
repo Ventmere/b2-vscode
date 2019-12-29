@@ -2,7 +2,7 @@
   "name": "ventmere-b2",
   "displayName": "Ventmere B2",
   "description": "Integrates Ventmere B2 into VS Code.",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "icon": "media/b2.png",
   "publisher": "ventmere",
   "engines": {
@@ -73,6 +73,10 @@
       {
         "command": "ventmere-b2.tag-content",
         "title": "B2: Tag Content for Translation"
+      },
+      {
+        "command": "ventmere-b2.sync-revision",
+        "title": "B2: Sync Current Object"
       }
     ],
     "languages": [
