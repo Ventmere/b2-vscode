@@ -21,6 +21,12 @@ Integrates Ventmere B2 into VS Code.
 
 ## Release Notes
 
+### 0.2.5
+
+#### Added
+
+- Remove 'test' from asset upload path.
+
 ### 0.2.4
 
 #### Added
