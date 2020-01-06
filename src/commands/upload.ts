@@ -106,7 +106,7 @@ export function onUploadAsset(ctx: B2ExtContext) {
 
 function getBasePath() {
   const date = moment().format("YYYY-MM");
-  return `/test/uploads/${date}`;
+  return `/uploads/${date}`;
 }
 
 function getUniqueName(name: string) {
