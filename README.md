@@ -21,6 +21,12 @@ Integrates Ventmere B2 into VS Code.
 
 ## Release Notes
 
+### 0.2.6
+
+#### Fixed
+
+- Fixed cloned controller js file extension.
+
 ### 0.2.5
 
 #### Added

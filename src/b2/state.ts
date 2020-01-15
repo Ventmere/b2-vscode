@@ -501,7 +501,7 @@ export class B2ExtEntryState {
           );
           await vscode.workspace.fs.copy(
             joinUriPath(uri, `${handle}.controller.js`),
-            joinUriPath(folder, newHandle, `${newHandle}.controller.huz`)
+            joinUriPath(folder, newHandle, `${newHandle}.controller.js`)
           );
           await vscode.workspace.fs.copy(
             joinUriPath(uri, `${handle}.controller.json`),
